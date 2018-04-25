@@ -1,6 +1,6 @@
 # About
 
-Re-ops one REPL to rule them all presentation, can be viewed [online](http://re-ops.github.io/re-one/index.html).
+"Re-ops One REPL to rule them all" presentation, can be viewed [online](http://re-ops.github.io/re-one/index.html).
 
 # License
 
