@@ -1,0 +1,37 @@
+(go)
+
+; we have 5 machines
+
+(list)
+
+; lets update them all
+
+(update (hosts))
+
+; copy a file into them
+
+(copy-file (hosts) "/home/ronen/Downloads/foo" "/tmp")
+
+; install a package
+
+(install (hosts) "tmux")
+
+; drill down into a host
+
+(log-hosts "192.168.122.97")
+
+; redirect output
+
+(redirect-output ["re-mote.log"])
+
+; list
+
+(listing (hosts))
+
+; restore settings back
+
+(reset)
+
+; all quite now
+
+(listing (hosts))

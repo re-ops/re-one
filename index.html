@@ -1,0 +1,593 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>Re-ops, a Functional Live-Infrastructure as Code</title>
+
+    <link rel="stylesheet" href="css/reveal.css">
+    <link rel="stylesheet" href="css/theme/black.css" id="theme">
+
+    <!-- Theme used for syntax highlighting of code -->
+    <link rel="stylesheet" href="lib/css/zenburn.css">
+    <!-- <link rel="stylesheet" href="lib/styles/github&#45;gist.css"> -->
+    <!-- <link rel="stylesheet" href="lib/styles/docco.css"> -->
+    <!-- <link rel="stylesheet" href="lib/styles/github.css"> -->
+
+
+
+    <!-- Printing and PDF exports -->
+    <script>
+	var link = document.createElement( 'link' );
+	link.rel = 'stylesheet';
+	link.type = 'text/css';
+	link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+	document.getElementsByTagName( 'head' )[0].appendChild( link );
+    </script>
+  </head>
+  <body>
+    <div class="reveal">
+	<div class="slides">
+	  <section id="title">
+	    <h1>Re-ops</h1>
+	    <h3>One Repl to rule them all</h3>
+	    <p>
+		<small>Created by <a href="https://narkisr.com">Ronen Narkis</a> / <a href="http://twitter.com/narkisr">@narkisr</a></small>
+		<small><a href="#/themes">settings</a></small>
+	    </p>
+	  </section>
+
+       <section id="Intro">
+	    <h2>Operations</h2>
+	    <p> The process of managing computerized resources  </p>
+	    <p> by manipulating their state </span> </p>
+	 </section>
+
+	<section id="requirements">
+	  <h2>What do we need?</h2>
+	  <p class ="fragment fade-down">Ad hoc operations</p>
+	  <p class ="fragment fade-down">Scheduled operations</p>
+	  <p class ="fragment fade-down">Provisioning</p>
+	  <p class ="fragment fade-down">VM Orchestration</p>
+	  <p class ="fragment fade-down">Remoting</p>
+	  <p class ="fragment fade-down">Data collection and analysis</p>
+	</section>
+
+	<section id="issues">
+	  <h3>Existing issues</h3>
+	  <p class ="fragment fade-down">Language shoehorned into a data format </p>
+	  <p class ="fragment fade-down">Behaviour over data </p>
+	  <p class ="fragment fade-down">Slow dev/deploy cycle</p>
+	  <p class ="fragment fade-down">Extension is too hard</p>
+	</section>
+
+	<section id= "re-ops">
+	  <h2>Re-ops</h2>
+	  <p class="fragment">Live environment for managing servers</p>
+	  <p class="fragment">Composed from <span class="fragment fade-up">Re-core</span> <span class="fragment fade-up"> Re-mote</span><span class="fragment fade-up"> Re-gent</span><span class="fragment fade-up"> and Re-conf</span></p>
+	  <p class="fragment">Not magic, functions with a dash of macros. </p>
+	</section>
+
+	<section id="re-mote-overview">
+	  <h2>Re-mote</h2>
+	  <p> Remote automation</p>
+	  <p> Scheduled execution </p>
+	  <p> Data collection and persistence</p>
+	</section>
+
+	<section id="hosts">
+	  <h2>Hosts</h2>
+	  <pre><code class="clojure" data-trim contenteditable>
+(def development (Hosts. {:user "ronen"} ["host-a" ,,,,]))
+
+(defprotocol Shell
+  (ls [this target flags]))
+
+(extend-type Hosts
+   Shell
+  (ls [this target flags]
+   ; implementation
+  ))
+
+(defn listing [hs]
+  (run (ls hs "/" "-la") | (pretty)))
+	  </code></pre>
+	</section>
+
+	<section id="pipelines-overview">
+	  <h2> Pipelines </h2>
+	  <p class="fragment"> Series of functions (operations)</p>
+	  <p class="fragment"> Data flows from one function to the next </p>
+	  <p class="fragment"> Intermediate functions operate on data </p>
+	  <p class="fragment"> Final function output, persist, block/run async etc..</p>
+	  <p class="fragment"> Composable (just functions)</p>
+	</section>
+
+	<section id="pipelines-example">
+	  <h2>Pipeline expansion</h2>
+	  <pre><code class="clojure" data-trim contenteditable>
+
+                           filtering             output
+                                ^                   ^
+(defn listing [hs]              |                   |
+  (run (ls hs "/" "-la") | (pick successful) | (pretty)))
+  |
+  V
+  (| (| (ls ..) (pick ..)) (pretty))
+     |
+     V
+   ; res is {:successful [], :failure []}
+   (let [[this' res] (ls hs)]
+     (pick this' res))
+
+	  </code></pre>
+	</section>
+
+	<section id="pipeline-spec">
+	  <h2>Pipeline data</h2>
+	  <pre><code class="clojure" data-trim contenteditable>
+
+
+(s/def ::operation-result
+  (s/keys
+   :req-un [::success ::failure ::hosts ::hosts]))
+
+(s/def ::auth
+  (s/keys
+   :opt-un [::ssh-key]
+   :req-un [::user]))
+
+(s/def ::hosts-entity
+  (s/keys :req-un [::auth ::hosts]))
+
+(s/def ::pipeline
+  (s/tuple ::hosts-entity ::operation-result))
+	  </code></pre>
+	</section>
+
+	 <section id="re-mote-gif">
+	  <p>Re-mote</p>
+	  <a href="./gifs/re-mote.gif">
+	    <img src="./gifs/re-mote.gif" alt="" width="1500px" height="500px">
+	  </a>
+	</section>
+
+
+	<section id="scheduling">
+	  <h2>Scheduling</h2>
+	  <pre><code class="clojure" data-trim contenteditable>
+; every day on 10 AM
+(defn apt-jobs [hs]
+  (watch :update (every-day 10) (fn [] (aptdate hs))))
+
+; every 5 seconds
+(defn stats-jobs [hs]
+  (watch :net (seconds 2)  (fn [] (net-persist hs)))
+  (watch :cpu (seconds 5) (fn [] (cpu-publish hs))))
+
+; Saturday 4 AM
+(defn zfs-jobs [hs]
+  (watch :scrub (at-day DateTimeConstants/SATURDAY 4)
+    (fn [] (run (scrub hs "tank") | (email "scrub done")))))
+	  </code></pre>
+	</section>
+
+<section id="stevedore">
+	  <h2>Shelling out</h2>
+	  <pre><code class="clojure" data-trim contenteditable>
+(let [target "/" flags "-la"]
+  (script ("ls" ~target ~flags))); =>  expands into ls / -la
+	  </code></pre>
+	</section>
+
+	<section id="free">
+	  <h2>Free</h2>
+	  <pre><code class="clojure" data-trim contenteditable>
+(defn free-script []
+  (script
+   (set! R @("free" "-m"))
+   (if (not (= $? 0)) ("exit" 1))
+   (pipe
+     ((println (quoted "${R}")))
+     ("awk" "'NR==2 { print $2 \" \" $3 \" \" $4 }'"))))
+	  </code></pre>
+	</section>
+
+	<section id="re-core-overview">
+	  <h2> Re-core</h2>
+	  <p class="fragment"> Manage VMs (AWS, DigitalOcean, KVM)</p>
+	  <p class="fragment"> Pipeline/Protocol pattern</p>
+	  <p class="fragment"> Fluent API </p>
+	  <p class="fragment"> Persistent (ES)</p>
+	  <p class="fragment"> In memory Queue</p>
+	</section>
+
+	<section id="systems">
+	  <h2>Systems and Types</h2>
+	  <pre><code class="clojure" data-trim contenteditable>
+(def systems (Systems.))
+
+(def types (Types.))
+
+(defn start
+  ([]
+   (start (comp not ip)))
+  ([f]
+   (run (ls systems) | (filter-by f) | (sys/start))))
+			   ^
+			   |
+		  [this, {:systems [...]}]
+	  </code></pre>
+	</section>
+
+	<section id="systems-model">
+	  <h2>Systems model</h2>
+	  <pre><code class="clojure" data-trim contenteditable>
+{
+  :machine {
+    :hostname "reops" :user "re-ops" :domain "local"
+    :os :ubuntu-16.04 :cpu 2 :ram 1024
+  }
+
+  :kvm {
+    :node :remote
+  }
+
+  :type "re-ops"
+}
+	  </code></pre>
+	</section>
+
+	<section id="types-model">
+	  <h2>Types model</h2>
+	  <pre><code class="clojure" data-trim contenteditable>
+{
+  :re-conf {
+   :src "re-ops.js"
+   :args []
+  }
+
+  :description "Re-gent target"
+  :type "re-ops"
+}
+	  </code></pre>
+	</section>
+
+	<section id="fluent">
+	  <h2> VM control</h2>
+
+	  <pre><code class="clojure" data-trim contenteditable>
+(list) ; list all systems
+
+(list ip) ; list all systems that have an ip (running)
+
+(list identity :types) ; list all types
+
+(start (comp not ip))) ; no ip = down
+
+(reload (by-type :redis)); matching type
+
+(destroy (matching "Fstr")); id matching
+
+(provision
+   (fn [[id m]] (> 2 (get-in m [:machine :cpu]))))
+	  </code></pre>
+	</section>
+
+	<section id="fluent">
+	  <h2> Into hosts </h2>
+
+	  <pre><code class="clojure" data-trim contenteditable>
+(hosts); All Systems as Hosts
+
+(hosts (matching "foo") :ip) ; single host access with ip
+
+(hosts (by-type :redis) :hostname); redis using hostname
+
+(upgrade (hosts)); upgrade all
+
+	  </code></pre>
+	</section>
+	<section id="fluent">
+	  <h2>Presets</h2>
+
+	  <pre><code class="clojure" data-trim contenteditable>
+(create kvm-small :redis) ; redis kvm instance
+
+(create kvm-small :redis 5) ; 5 in one go
+
+(create kvm-small :redis "furry") ; custom hostname
+
+(create kvm-small vol-128G :redis) ; 128G Volume
+
+(create t2-nano :redis) ; AWS t2 nano
+
+(create t2-nano ebs-128G :redis) ; 128G EBS Volume
+	  </code></pre>
+	</section>
+
+	<section id="re-core-vms">
+	  <p>Re-core VMs</p>
+	  <a href="./gifs/re-core.gif">
+	    <img src="./gifs/re-core.gif" alt="" width="1200px" height="500px">
+	  </a>
+	</section>
+
+	<section id="ssh-and-spice">
+	  <p>Spice and SSH</p>
+	  <a href="./gifs/ssh-into.gif">
+	    <img src="./gifs/ssh-into.gif" alt="" width="1200px" height="500px">
+	  </a>
+	</section>
+
+
+	<section id="re-core-browse">
+	  <p>Browsify</p>
+	  <a href="./gifs/browse-to.gif">
+	    <img src="./gifs/browse-to.gif" alt="" width="1200px" height="500px">
+	  </a>
+	</section>
+
+	<section id="re-gent-overview">
+	  <h3> Re-gent </h3>
+	  <p class="fragment"> Persistent connections (Zeromq)</p>
+	  <p class="fragment"> Secure (CurveZMQ) </p>
+	  <p class="fragment"> Distributed Clojure functions </p>
+	  <p class="fragment"> Easy to deploy (single binary)</p>
+	  <p class="fragment"> Interchangeable with SSH</p>
+	</section>
+
+	<section id="re-gent-example">
+	  <h2> Distributed functions </h2>
+	  <pre><code class="clojure" data-trim contenteditable>
+; using serializable.fn
+(def ^{:doc "adding one"} plus-one
+  (s/fn [x] (+ 1 x)))
+
+(call plus-one [1] hs)
+	  </code></pre>
+	</section>
+
+	<section id="re-gent-pipelines">
+	  <h2> Re-gent pipeline </h2>
+	  <pre><code class="clojure" data-trim contenteditable>
+(defn add-one [hs i]
+  (run (plus-one hs i) | (pretty "Added one")))
+
+(defn update
+  "Update with downgrading"
+   [hs]
+   (run (z/update hs) | (downgrade s/update) | ...)))
+	  </code></pre>
+	</section>
+
+	<section id="re-gent-use">
+	  <p>Re-gent in use</p>
+	  <a href="./gifs/re-gent.gif">
+	    <img src="./gifs/re-gent.gif" alt="" width="1500px" height="500px">
+	  </a>
+	</section>
+
+	<section id="data-collection">
+        <h2>Nmap</h2>
+	  <pre><code class="clojure" data-trim contenteditable>
+(defn nmap [path flags hosts]
+  (let [{:keys [exit out err] :as res} (sh ... "-oX")]
+    (if (= 0 exit)
+      (dx/parse-str out)
+      (throw (ex-info "failed to scan"
+	   {:result res ...})))))
+        </code></pre>
+	</section>
+
+     <section id="data-collection">
+        <h2> Nmap pipeline </h2>
+	  <pre><code class="clojure" data-trim contenteditable>
+
+(defn #^{:category :security} nmap-scan
+  [hs flags network]
+  (run (scan hs flags network) | ... | (persist)))
+
+[re-mote]λ: (nmap-scan sentry "-T5" "192.168.122.0/24")
+
+{:success [
+  {:code 0
+   :host "foo"
+   :result {:name "tor-orport" :portid "9001" :state "open"}
+   :timestamp 1524666955996
+   :type "nmap-scan"
+   :uuid "d61358e147384d98b8fdda6e7ccb250b"}
+  ]
+}
+        </code></pre>
+	</section>
+
+      <section id="nmap-dashboard">
+	  <p> Nmap dashboard</p>
+	  <img src="./img/nmap-scan.png" alt="">
+	</section>
+
+
+	<section id="metrics">
+	  <h2>Metrics</h2>
+	  <pre><code class="clojure" data-trim contenteditable>
+(defn #^{:category :stats} ram-persist [hs]
+  (run (cpu hs) | (enrich "cpu") | (persist)))
+                     |
+                     V
+             ES type and timestamp
+	  </code></pre>
+	</section>
+
+
+	<section id="grafana">
+	  <h3> Cpu Dashboard </h3>
+	  <img src="./img/grafana.png" alt="">
+	</section>
+
+	<section id="results">
+	  <h3> Kibana Results </h3>
+	  <img src="./img/results.png" alt="">
+	</section>
+
+
+	<section id="re-conf-overview">
+	  <h3> Re-conf </h3>
+	  <p class="fragment">Provisioning recipes</p>
+	  <p class="fragment">Clojurescript</p>
+	  <p class="fragment">Concurrent</p>
+	  <p class="fragment">Tracing and profiling</p>
+	</section>
+
+	<section id="re-conf-recipe">
+	  <h2>A recipe</h2>
+	  <pre><code class="clojure" data-trim contenteditable>
+(defn packer
+  "Setup up packer"
+  []
+  (let [dest "/tmp/packer_1.2.2_linux_amd64.zip"
+	  sha "6575f8357a03ecad7997151234b1..."
+	  url "https://releases.hashicorp.com/..."]
+    (->
+     (download url dest)
+     (checksum dest sha :sha256)
+     (unzip dest "/tmp/packer")
+     (summary "installing packer done"))))
+	  </code></pre>
+	</section>
+
+	<section id="re-conf-recipe">
+	  <h2>Resource</h2>
+	  <pre><code class="clojure" data-trim contenteditable>
+(defn run-checkum
+  [f expected k]
+  (let [c (chan) ...]
+     (.on stream "end" (fn [] (put! c ...)))
+    ...
+    c))
+
+(defn checksum
+  "Checksum a file and check expected value"
+  ([file e k]
+   (checksum nil file e k))
+  ([c file e k]
+   (run c #(run-checkum file e k))))
+	  </code></pre>
+	</section>
+
+	<section id="re-conf-invoke">
+	  <h2>Invoke</h2>
+	  <pre><code class="clojure" data-trim contenteditable>
+(defn invoke
+  "Invoking all public fn in ns concurrently"
+  [n]
+  (doseq [[k v] (js->clj (js/Object n))]
+    (debug (<< "invoking ~{k}") ::invoke)
+    (go (.call v))))
+	  </code></pre>
+	</section>
+
+	<section id="re-conf-run">
+	  <h2>Run</h2>
+	  <pre><code class="clojure" data-trim contenteditable>
+(defn run [c f]
+  (go
+    (let [r (if c (&lt! c) {:ok true})]
+      (if (:ok r) 
+        (&lt! (profile f)) 
+         r ))))
+	</code></pre>
+	</section>
+
+	<section id="re-conf-workflow">
+	  <h3>Development Workflow</h3>
+	  <p class="fragment">Launch VM</p>
+	  <p class="fragment">Launch REPL</p>
+	  <p class="fragment">Mount share folder</p>
+	  <p class="fragment">Connect to remote REPL</p>
+	</section>
+
+	<section id="reloaded">
+	  <h2> Reloaded workflow </h2>
+	  <pre><code class="clojure" data-trim contenteditable>
+(ns user
+  [clojure.tools.namespace.repl :refer (refresh refresh-all)]
+  ....
+ )
+
+; create environment from scratch
+(go)
+
+; halt the environment
+(stop)
+
+; stop and go (when re-defining does not work)
+(reset)
+	  </code></pre>
+	</section>
+
+	<section id="reset">
+	  <h2> Reset </h2>
+	  <p> clojure.tools.namespace.repl refresh refresh-all</p>
+	  <p> Works across threads</p>
+	  <p class="fragment highlight-red"> Reset all VARS</p>
+	  <p class="fragment highlight-red"> Atoms state lost</p>
+	  <p class="fragment highlight-green"> Re-defining preferred (protocols)</p>
+	</section>
+
+	<section id="future">
+	  <h2>Future </h2>
+	  <p> Host queries (OSquery and ES) </p>
+	  <p> Re-spec</p>
+	  <p> Repl enhancements (history and completion)</p>
+	  <p> IoT (Wemo Mqtt)</p>
+	</section>
+
+	<section>
+	  <h2> Questions ?</h2>
+	  <p> Check <a href="https://re-ops.github.io/re-ops/">https://re-ops.github.io/re-ops/</a> </p>
+	  <p> <a href="https://twitter.com/narkisr">@narkisr</a></p>
+	</section>
+
+	<section id="themes">
+	  <h2>Settings</h2>
+	  <p>
+	    Select theme: <br>
+	    <!-- Hacks to swap themes after the page has loaded. Not flexible and only intended for the reveal.js demo deck. -->
+	    <a href="#" onclick="document.getElementById('theme').setAttribute('href','css/theme/black.css'); return false;">Black (default)</a> -
+	    <a href="#" onclick="document.getElementById('theme').setAttribute('href','css/theme/white.css'); return false;">White</a> -
+	    <a href="#" onclick="document.getElementById('theme').setAttribute('href','css/theme/league.css'); return false;">League</a> -
+	    <a href="#" onclick="document.getElementById('theme').setAttribute('href','css/theme/sky.css'); return false;">Sky</a> -
+	    <a href="#" onclick="document.getElementById('theme').setAttribute('href','css/theme/beige.css'); return false;">Beige</a> -
+	    <a href="#" onclick="document.getElementById('theme').setAttribute('href','css/theme/simple.css'); return false;">Simple</a> <br>
+	    <a href="#" onclick="document.getElementById('theme').setAttribute('href','css/theme/serif.css'); return false;">Serif</a> -
+	    <a href="#" onclick="document.getElementById('theme').setAttribute('href','css/theme/blood.css'); return false;">Blood</a> -
+	    <a href="#" onclick="document.getElementById('theme').setAttribute('href','css/theme/night.css'); return false;">Night</a> -
+	    <a href="#" onclick="document.getElementById('theme').setAttribute('href','css/theme/moon.css'); return false;">Moon</a> -
+	    <a href="#" onclick="document.getElementById('theme').setAttribute('href','css/theme/solarized.css'); return false;">Solarized</a>
+	  </p>
+	</section>
+    </div>
+  </div>
+
+  <script src="lib/js/head.min.js"></script>
+  <script src="js/reveal.js"></script>
+
+  <script>
+    // More info about config & dependencies:
+    // - https://github.com/hakimel/reveal.js#configuration
+    // - https://github.com/hakimel/reveal.js#dependencies
+  Reveal.initialize({
+slideNumber: true,
+history: true,
+dependencies: [
+{ src: 'plugin/markdown/marked.js' },
+{ src: 'plugin/markdown/markdown.js' },
+{ src: 'plugin/notes/notes.js', async: true },
+{ src: 'plugin/highlight/highlight.js', async: false, callback: function() { hljs.initHighlightingOnLoad(); } }
+]
+});
+  </script>
+</body>
+</html>

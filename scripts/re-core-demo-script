@@ -1,0 +1,38 @@
+
+(go)
+
+; no systems yet
+
+(list)
+
+; lets create
+
+(create kvm-small :re-ops local 2); 2 instances
+
+(create kvm-small :re-ops local vol-128G) ; 128G Volume
+
+(create kvm-small :re-ops local (os :ubuntu-16.04-desktop)); custom node and os
+
+; list all systems
+
+(list)
+
+; list types
+
+(list identity :types)
+
+; view systems with ip (running)
+
+(list ip)
+
+; halt matching
+
+(halt (matching ""))
+
+; start only those down
+
+(start (comp not ip))
+
+; destroy all forcefuly
+
+(destroy identity {:force true})

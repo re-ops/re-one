@@ -1,0 +1,33 @@
+(use 're-mote.zero.results)
+
+(go)
+
+; no hosts registered
+
+(registered-hosts)
+
+; deploy agent
+
+(deploy (hosts) "/home/ronen/code/re-ops/re-gent/target/re-gent")
+
+(registered-hosts)
+
+; call plus-1 on the cluster
+
+(call plus-one [1] (into-zmq-hosts (hosts identity :hostname)))
+
+; view results
+
+(pretty-result "842b381dae104096b5f00c3667c4d238"  "re-ops-e59e41bbd8")
+
+; kill agent
+
+(kill (hosts))
+
+(registered-hosts)
+
+(launch (hosts))
+
+(registered-hosts)
+
+
