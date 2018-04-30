@@ -66,14 +66,41 @@
 	  <h2>Re-ops</h2>
 	  <p class="fragment">Live environment for managing servers</p>
 	  <p class="fragment">Composed from <span class="fragment fade-up">Re-core</span> <span class="fragment fade-up"> Re-mote</span><span class="fragment fade-up"> Re-gent</span><span class="fragment fade-up"> and Re-conf</span></p>
-	  <p class="fragment">Not magic, functions with a dash of macros. </p>
+	  <p class="fragment">No magic just functions with a dash of macros. </p>
+	</section>
+
+	<section id="reset">
+	  <h2> Reloaded workflow </h2>
+	  <p class="fragment"> Re-define function/ns or refresh/refresh-all</p>
+	  <p class="fragment"> Refresh works across threads</p>
+	  <p class="fragment"> Refresh resets all state (atoms)</p>
+	  <p class="fragment"> Protocol changes require refresh</p>
+	</section>
+
+	<section id="reloaded">
+	  <h2> Reloaded functions </h2>
+	  <pre><code class="clojure" data-trim contenteditable>
+(ns user
+  [clojure.tools.namespace.repl :refer (refresh refresh-all)]
+  ....
+ )
+
+; start the system
+(go)
+
+; halt the system
+(stop)
+
+; stop and go
+(reset)
+	  </code></pre>
 	</section>
 
 	<section id="re-mote-overview">
 	  <h2>Re-mote</h2>
-	  <p> Remote automation</p>
-	  <p> Scheduled execution </p>
-	  <p> Data collection and persistence</p>
+	  <p class="fragment"> Remote automation (SSH/ZeroMQ)</p>
+	  <p class="fragment"> Scheduled execution </p>
+	  <p class="fragment"> Data collection and persistence</p>
 	</section>
 
 	<section id="hosts">
@@ -196,19 +223,17 @@
 
 	<section id="re-core-overview">
 	  <h2> Re-core</h2>
-	  <p class="fragment"> Manage VMs (AWS, DigitalOcean, KVM)</p>
+	  <p class="fragment"> AWS, DigitalOcean, KVM</p>
 	  <p class="fragment"> Pipeline/Protocol pattern</p>
-	  <p class="fragment"> Fluent API </p>
+	  <p class="fragment"> Fluent interface </p>
 	  <p class="fragment"> Persistent (ES)</p>
-	  <p class="fragment"> In memory Queue</p>
+	  <p class="fragment"> Queue with Workers pool</p>
 	</section>
 
 	<section id="systems">
-	  <h2>Systems and Types</h2>
+	  <h2>Systems</h2>
 	  <pre><code class="clojure" data-trim contenteditable>
 (def systems (Systems.))
-
-(def types (Types.))
 
 (defn start
   ([]
@@ -331,15 +356,23 @@
 
 	<section id="re-gent-overview">
 	  <h3> Re-gent </h3>
-	  <p class="fragment"> Persistent connections (Zeromq)</p>
+	  <p class="fragment"> Persistent connections (ZeroMQ)</p>
 	  <p class="fragment"> Secure (CurveZMQ) </p>
 	  <p class="fragment"> Distributed Clojure functions </p>
 	  <p class="fragment"> Easy to deploy (single binary)</p>
 	  <p class="fragment"> Interchangeable with SSH</p>
 	</section>
 
+	<section id="live-functions">
+	  <h3>Distributed functions </h3>
+	  <p class="fragment"> Serialized </p>
+	  <p class="fragment"> Support reload workflow</p>
+	  <p class="fragment"> Shared classpath</p>
+	</section>
+
+
 	<section id="re-gent-example">
-	  <h2> Distributed functions </h2>
+	  <h2> A Function </h2>
 	  <pre><code class="clojure" data-trim contenteditable>
 ; using serializable.fn
 (def ^{:doc "adding one"} plus-one
@@ -389,7 +422,7 @@
   [hs flags network]
   (run (scan hs flags network) | ... | (persist)))
 
-[re-mote]λ: (nmap-scan sentry "-T5" "192.168.122.0/24")
+(nmap-scan sentry "-T5" "192.168.122.0/24")
 
 {:success [
   {:code 0
@@ -398,8 +431,7 @@
    :timestamp 1524666955996
    :type "nmap-scan"
    :uuid "d61358e147384d98b8fdda6e7ccb250b"}
-  ]
-}
+  ]}
         </code></pre>
 	</section>
 
@@ -457,47 +489,24 @@
 	  </code></pre>
 	</section>
 
-	<section id="re-conf-recipe">
+	<section id="re-conf-resource">
 	  <h2>Resource</h2>
 	  <pre><code class="clojure" data-trim contenteditable>
-(defn run-checkum
-  [f expected k]
-  (let [c (chan) ...]
+(defn run-checkum [f expected k]
+  (let [c (chan) 
+        stream (.ReadStream fs f)
+        shasum (.createHash crypto (name k)]
+     ...
      (.on stream "end" (fn [] (put! c ...)))
-    ...
     c))
 
 (defn checksum
   "Checksum a file and check expected value"
   ([file e k]
-   (checksum nil file e k))
+   (checksum file e k))
   ([c file e k]
-   (run c #(run-checkum file e k))))
+   (run c #(checkum file e k))))
 	  </code></pre>
-	</section>
-
-	<section id="re-conf-invoke">
-	  <h2>Invoke</h2>
-	  <pre><code class="clojure" data-trim contenteditable>
-(defn invoke
-  "Invoking all public fn in ns concurrently"
-  [n]
-  (doseq [[k v] (js->clj (js/Object n))]
-    (debug (<< "invoking ~{k}") ::invoke)
-    (go (.call v))))
-	  </code></pre>
-	</section>
-
-	<section id="re-conf-run">
-	  <h2>Run</h2>
-	  <pre><code class="clojure" data-trim contenteditable>
-(defn run [c f]
-  (go
-    (let [r (if c (&lt! c) {:ok true})]
-      (if (:ok r) 
-        (&lt! (profile f)) 
-         r ))))
-	</code></pre>
 	</section>
 
 	<section id="re-conf-workflow">
@@ -508,40 +517,12 @@
 	  <p class="fragment">Connect to remote REPL</p>
 	</section>
 
-	<section id="reloaded">
-	  <h2> Reloaded workflow </h2>
-	  <pre><code class="clojure" data-trim contenteditable>
-(ns user
-  [clojure.tools.namespace.repl :refer (refresh refresh-all)]
-  ....
- )
-
-; create environment from scratch
-(go)
-
-; halt the environment
-(stop)
-
-; stop and go (when re-defining does not work)
-(reset)
-	  </code></pre>
-	</section>
-
-	<section id="reset">
-	  <h2> Reset </h2>
-	  <p> clojure.tools.namespace.repl refresh refresh-all</p>
-	  <p> Works across threads</p>
-	  <p class="fragment highlight-red"> Reset all VARS</p>
-	  <p class="fragment highlight-red"> Atoms state lost</p>
-	  <p class="fragment highlight-green"> Re-defining preferred (protocols)</p>
-	</section>
-
 	<section id="future">
 	  <h2>Future </h2>
-	  <p> Host queries (OSquery and ES) </p>
 	  <p> Re-spec</p>
-	  <p> Repl enhancements (history and completion)</p>
 	  <p> IoT (Wemo Mqtt)</p>
+	  <p> Host queries (OSquery and ES) </p>
+	  <p> Repl enhancements (history and completion)</p>
 	</section>
 
 	<section>
