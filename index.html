@@ -46,11 +46,10 @@
 
 	<section id="requirements">
 	  <h2>What do we need?</h2>
-	  <p class ="fragment fade-down">Ad hoc operations</p>
-	  <p class ="fragment fade-down">Scheduled operations</p>
+	  <p class ="fragment fade-down">Remote operations</p>
+	  <p class ="fragment fade-down">Ad hoc & Scheduled execution</p>
 	  <p class ="fragment fade-down">Provisioning</p>
 	  <p class ="fragment fade-down">VM Orchestration</p>
-	  <p class ="fragment fade-down">Remoting</p>
 	  <p class ="fragment fade-down">Data collection and analysis</p>
 	</section>
 
@@ -59,7 +58,7 @@
 	  <p class ="fragment fade-down">Language shoehorned into a data format </p>
 	  <p class ="fragment fade-down">Behaviour over data </p>
 	  <p class ="fragment fade-down">Slow dev/deploy cycle</p>
-	  <p class ="fragment fade-down">Extension is too hard</p>
+	  <p class ="fragment fade-down">Hard to extend/compose</p>
 	</section>
 
 	<section id= "re-ops">
@@ -188,7 +187,7 @@
 (defn apt-jobs [hs]
   (watch :update (every-day 10) (fn [] (aptdate hs))))
 
-; every 5 seconds
+; every n seconds
 (defn stats-jobs [hs]
   (watch :net (seconds 2)  (fn [] (net-persist hs)))
   (watch :cpu (seconds 5) (fn [] (cpu-publish hs))))
@@ -227,7 +226,7 @@
 	  <p class="fragment"> Pipeline/Protocol pattern</p>
 	  <p class="fragment"> Fluent interface </p>
 	  <p class="fragment"> Persistent (ES)</p>
-	  <p class="fragment"> Queue with Workers pool</p>
+	  <p class="fragment"> Queue with workers pool</p>
 	</section>
 
 	<section id="systems">
@@ -512,8 +511,8 @@
 	<section id="re-conf-workflow">
 	  <h3>Development Workflow</h3>
 	  <p class="fragment">Launch VM</p>
-	  <p class="fragment">Launch REPL</p>
 	  <p class="fragment">Mount share folder</p>
+	  <p class="fragment">SSH port forward</p>
 	  <p class="fragment">Connect to remote REPL</p>
 	</section>
 
