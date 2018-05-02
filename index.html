@@ -47,7 +47,7 @@
 	<section id="requirements">
 	  <h2>What do we need?</h2>
 	  <p class ="fragment fade-down">Remote operations</p>
-	  <p class ="fragment fade-down">Ad hoc & Scheduled execution</p>
+	  <p class ="fragment fade-down">Ad hoc & scheduled execution</p>
 	  <p class ="fragment fade-down">Provisioning</p>
 	  <p class ="fragment fade-down">VM Orchestration</p>
 	  <p class ="fragment fade-down">Data collection and analysis</p>
@@ -105,19 +105,33 @@
 	<section id="hosts">
 	  <h2>Hosts</h2>
 	  <pre><code class="clojure" data-trim contenteditable>
-(def development (Hosts. {:user "ronen"} ["host-a" ,,,,]))
+(def development
+  (Hosts. {:user "ronen"} ["host-a" ,,,,]))
 
 (defprotocol Shell
   (ls [this target flags]))
 
+(defn list-script [target flags]
+  (script ("ls" ~target ~flags)))
+
 (extend-type Hosts
    Shell
   (ls [this target flags]
-   ; implementation
-  ))
+    [this (run-hosts this (list-script target flags))]))
+	  </code></pre>
+	</section>
 
-(defn listing [hs]
-  (run (ls hs "/" "-la") | (pretty)))
+	<section id="shell-scripting">
+	  <h2>Shell scripting</h2>
+	  <pre><code class="clojure" data-trim contenteditable>
+(defn free-script []
+  (script
+    (set! R @("free" "-m"))
+    (if (not (= $? 0))
+      ("exit" 1))
+    (pipe
+      ((println (quoted "${R}")))
+      ("awk" "'NR==2 { print $2 \" \" $3 \" \" $4 }'"))))
 	  </code></pre>
 	</section>
 
@@ -196,27 +210,6 @@
 (defn zfs-jobs [hs]
   (watch :scrub (at-day DateTimeConstants/SATURDAY 4)
     (fn [] (run (scrub hs "tank") | (email "scrub done")))))
-	  </code></pre>
-	</section>
-
-<section id="stevedore">
-	  <h2>Shelling out</h2>
-	  <pre><code class="clojure" data-trim contenteditable>
-(let [target "/" flags "-la"]
-  (script ("ls" ~target ~flags))); =>  expands into ls / -la
-	  </code></pre>
-	</section>
-
-	<section id="free">
-	  <h2>Free</h2>
-	  <pre><code class="clojure" data-trim contenteditable>
-(defn free-script []
-  (script
-   (set! R @("free" "-m"))
-   (if (not (= $? 0)) ("exit" 1))
-   (pipe
-     ((println (quoted "${R}")))
-     ("awk" "'NR==2 { print $2 \" \" $3 \" \" $4 }'"))))
 	  </code></pre>
 	</section>
 
