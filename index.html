@@ -138,8 +138,8 @@
 	<section id="pipelines-overview">
 	  <h2> Pipelines </h2>
 	  <p class="fragment"> Series of functions (operations)</p>
-	  <p class="fragment"> Data flows from one function to the next </p>
-	  <p class="fragment"> Intermediate functions operate on data </p>
+	  <p class="fragment"> Data flows from one operation to the next </p>
+	  <p class="fragment"> Intermediate opertions operate on data </p>
 	  <p class="fragment"> Final operation output/persist/block/run async etc..</p>
 	  <p class="fragment"> Composable (just functions)</p>
 	</section>
@@ -171,7 +171,7 @@
 
 (s/def ::operation-result
   (s/keys
-   :req-un [::success ::failure ::hosts ::hosts]))
+   :req-un [::success ::failure ::hosts]))
 
 (s/def ::auth
   (s/keys
@@ -367,26 +367,38 @@
 	  <h2> A Function </h2>
 	  <pre><code class="clojure" data-trim contenteditable>
 ; using serializable.fn
-(def ^{:doc "adding one"} plus-one
+(def ^{:doc "adding one"} add-fn
   (s/fn [x] (+ 1 x)))
 
-(call plus-one [1] hs)
+(call add [1] hs)
 	  </code></pre>
 	</section>
 
 	<section id="re-gent-pipelines">
 	  <h2> Re-gent pipeline </h2>
 	  <pre><code class="clojure" data-trim contenteditable>
+(defprotocol Arithmetics
+  (add [this x]))
+
+(extend-type Hosts
+   Arithmetics
+  (add [this x]
+    [this (run-hosts this add-fn [x] [5 :minute])]))
+
 (defn add-one [hs i]
   (run (plus-one hs i) | (pretty "Added one")))
+	  </code></pre>
+	</section>
 
+	<section id="downgrading">
+	  <h2>Downgrading</h2>
+	  <pre><code class="clojure" data-trim contenteditable>
 (defn update
   "Update with downgrading"
    [hs]
    (run (z/update hs) | (downgrade s/update) | ...)))
 	  </code></pre>
 	</section>
-
 	<section id="re-gent-use">
 	  <p>Re-gent in use</p>
 	  <a href="./gifs/re-gent.gif">
@@ -527,10 +539,10 @@
 
 	<section id="future">
 	  <h2>Future </h2>
-	  <p> Re-spec</p>
-	  <p> IoT (Wemo Mqtt)</p>
-	  <p> Host queries (OSquery and ES) </p>
 	  <p> Repl enhancements (history and completion)</p>
+	  <p> Host queries (OSquery and ES) </p>
+	  <p> IoT (Wemo Mqtt)</p>
+	  <p> Re-spec</p>
 	</section>
 
 	<section>
