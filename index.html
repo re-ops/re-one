@@ -126,7 +126,7 @@
 	  <p class="fragment"> Series of functions (operations)</p>
 	  <p class="fragment"> Data flows from one function to the next </p>
 	  <p class="fragment"> Intermediate functions operate on data </p>
-	  <p class="fragment"> Final function output, persist, block/run async etc..</p>
+	  <p class="fragment"> Final operation output/persist/block/run async etc..</p>
 	  <p class="fragment"> Composable (just functions)</p>
 	</section>
 
@@ -492,7 +492,7 @@
 	  <h2>Resource</h2>
 	  <pre><code class="clojure" data-trim contenteditable>
 (defn run-checkum [f expected k]
-  (let [c (chan) 
+  (let [c (chan)
         stream (.ReadStream fs f)
         shasum (.createHash crypto (name k)]
      ...
@@ -500,13 +500,29 @@
     c))
 
 (defn checksum
-  "Checksum a file and check expected value"
+  "Checksum a file and validate expected value"
   ([file e k]
    (checksum file e k))
   ([c file e k]
-   (run c #(checkum file e k))))
+   (run c #(checksum file e k))))
 	  </code></pre>
 	</section>
+
+	<section id="re-conf-invoke">
+	  <h2>Parallel invocation</h2>
+	  <pre><code class="clojure" data-trim contenteditable>
+(defn invoke
+  "Invoking all public fn in a ns concurrently"
+  [n env]
+  (doseq [[k f] (fns n)]
+    (debug (<< "invoking ~{k}") ::invoke)
+    (go
+      (case (arg-count f)
+        0 (.call f)
+        1 (.call f env)))))
+	  </code></pre>
+	</section>
+
 
 	<section id="re-conf-workflow">
 	  <h3>Development Workflow</h3>
